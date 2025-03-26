@@ -6,7 +6,8 @@
       "Type": "Map",
       "ItemProcessor": {
         "ProcessorConfig": {
-          "Mode": "INLINE"
+          "Mode": "DISTRIBUTED",
+          "ExecutionType": "STANDARD"
         },
         "StartAt": "Serialize image",
         "States": {
@@ -80,22 +81,14 @@
                 "JitterStrategy": "FULL"
               }
             ],
-            "End": true,
-            "Catch": [
-              {
-                "ErrorEquals": [
-                  "States.ALL"
-                ],
-                "Next": "Success"
-              }
-            ]
-          },
-          "Success": {
-            "Type": "Succeed"
+            "End": true
           }
         }
       },
-      "End": true
+      "End": true,
+      "Label": "Map",
+      "MaxConcurrency": 10,
+      "ToleratedFailurePercentage": 100
     }
   },
   "QueryLanguage": "JSONata"
