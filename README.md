@@ -58,6 +58,80 @@ The three Lambda functions are orchestrated using AWS Step Functions:
 
 The step function is declared [here](state_machine_definition.json).
 
+### Optional challenge: parallel execution
+
+The project defines an optional challenge:
+> Modify your event driven workflow: can you rewrite your Lambda functions so that the workflow can process multiple
+> image inputs in parallel? Can the Step Function "fan out" to accommodate this new workflow?
+
+I found a StepFunctions' flow element called `Map`,
+which allows me to map each item from a list of JSONs to a given workflow.
+Each workflow is executed concurrently.
+
+I used Distributed mode and set ToleratedFailurePercentage to 100,
+which I found in this 
+[AWS guide](https://docs.aws.amazon.com/step-functions/latest/dg/state-map-distributed.html).
+This way it runs against all images and shows me a summary at the end.
+If ToleratedFailurePercentage was 0, then it would stop the execution after first image
+fell below the confidence threshold. 
+Because each image in the image list is independent in my view,
+I didn't want an error of one image to influence predictions of other images.
+
+<table>
+  <tr>
+    <td align="center">
+      <img src="images/Step_function_parallel_definition.png" width="110" alt="Left Image"><br>
+      <em>Distributed Map state machine</em>
+    </td>
+    <td align="center">
+      <img src="images/Step_function_parallel_execution.png" width="300" alt="Right Image"><br>
+      <em>Distributed Map running over 5 sample images. Note that 3 of them fall below the confidence threshold and fail</em>
+    </td>
+  </tr>
+</table>
+
+The step function with parallel map is declared 
+[here](./parallel_state_machine_definition.json).
+
 ### Monitor inference
 
-To be done.
+#### Visualize model's confidence over time
+
+I can plot confidence that the model has in predicting a given class. 
+The confidence here is interpreted as the higher number in the inference array.
+The dashed line marks the confidence threshold which is set in the "Check threshold" Lambda function to 0.9.
+
+![](images/monitoring_observed_recent_inferences.png)
+
+#### Show predictions for sample images
+
+I think it's valuable to see what predictions are made for given images.
+In the production version I would be most interested in seeing images for which the confidence is low,
+to understand if the model is under-performing, or maybe it just gets bad data.
+Below you can see one example when the model is very confident, and one example when it's not.
+Please note that for 2-class classifier 64% confidence is quite low.
+
+<table>
+  <tr>
+    <td align="center">
+      <img src="images/monitoring_sample_prediction.png" width="300" alt="Left Image"><br>
+      <em>Image which makes the model is very confident</em>
+    </td>
+    <td align="center">
+      <img src="images/monitoring_sample_prediction_low_confidence.png" width="300" alt="Right Image"><br>
+      <em>Image which falls below the confidence threshold</em>
+    </td>
+  </tr>
+</table>
+
+#### Visualize class imbalance
+
+I think that a very useful metric is class imbalance. 
+It can help detecting model/data drift, 
+when the proportion of each class predictions would deviate from an assumed distribution.
+For the CIFAR-100 dataset I expect the class proportion to be roughly 50% - 50%.
+
+Below you can see a proportion of predicted classes after sending a few sample images via the state machine.
+
+![](images/monitoring_class_balance.png)
+*Proportion of predicted classes*
